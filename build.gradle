@@ -37,9 +37,10 @@ dependencies {
     compile('org.modelmapper:modelmapper:1.1.0')
     compile('org.springframework.boot:spring-boot-starter')
     compile("org.springframework.boot:spring-boot-starter-web")
-    compile('org.springframework.boot:spring-boot-starter-data-jpa')
+    // compile('org.springframework.boot:spring-boot-starter-data-jpa')
     compile('javax.xml.bind:jaxb-api:2.3.0')
     runtime('org.postgresql:postgresql:42.2.1')
+    testCompile('junit:junit:4.12')
     testCompile('org.springframework.boot:spring-boot-starter-test')
 }
 

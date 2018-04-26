@@ -8,13 +8,15 @@ import org.apache.http.ParseException;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
+//https://github.com/OKCoin/rest/blob/master/java/src/com/okcoin/rest/HttpUtilManager.java
 public class ExAPIHttpClient{
-    private final String apiKey = "aacc4dcc-92af-4f25-a14d-a56512f6f4a9";
-    private final String secretKey = "EE41AFD790FE117DCE7B8F51632A2FD7";
+    private final String apiKey = "apiKey";
+    private final String secretKey = "secretKey";
     private final String APIUrl = "https://www.okex.com";
     private final String accountAPIPath = "/api/v1/userinfo.do";
 
@@ -27,9 +29,8 @@ public class ExAPIHttpClient{
 
     private String SignRequestData(JSONObject data) throws Exception{
         StringBuilder sign = new StringBuilder();
-        Iterable<String> keys = (Iterable<String>)data.keys();
         
-        keys.forEach(key-> sign.append(key + "=" + data.getString(key) + "&"));
+        data.keySet().forEach(key-> sign.append(key + "=" + data.getString(key) + "&"));
         String combined = sign.toString() + "secret_key=" + this.secretKey;
 
         MessageDigest md5 = MessageDigest.getInstance("MD5");
@@ -41,11 +42,13 @@ public class ExAPIHttpClient{
             buffer.append(HEX_DIGITS[(bytes[i] & 0xf0) >> 4] + ""
                     + HEX_DIGITS[bytes[i] & 0xf]);
         }
-        
+        System.out.println(buffer.toString());
         return buffer.toString();
     }
 
-    public void GetSpotAssets(){
+    public String GetSpotAssets(){
+        String result = "";
+
         CloseableHttpClient httpclient = HttpClients.createDefault();
         try {
             HttpPost request = new HttpPost(this.APIUrl + accountAPIPath);
@@ -57,6 +60,9 @@ public class ExAPIHttpClient{
             requestData.put("api_key", this.apiKey);
             requestData.put("sign", this.SignRequestData(requestData));
             
+            StringEntity params = new StringEntity("{'api_key': 'aacc4dcc-92af-4f25-a14d-a56512f6f4a9', 'sign': '7B16F821CD80772FB0BC061F50CEEE75'}");
+            request.setEntity(params);
+
             CloseableHttpResponse response = httpclient.execute(request);
             
             //System.out.println("============="+response.toString());
@@ -65,6 +71,7 @@ public class ExAPIHttpClient{
                 System.out.println("--------------------------------------");
                 // 打印响应状态
                 System.out.println(response.getStatusLine());
+                result = response.getStatusLine().toString();
                 if (entity != null) {
                     // 打印响应内容长度
                     //System.out.println("Response content length: " + entity.getContentLength());
@@ -75,19 +82,19 @@ public class ExAPIHttpClient{
             } finally {
                 response.close();
             }
-        } catch (ClientProtocolException e) {
+        } 
+        catch (Exception e) {
             e.printStackTrace();
-        } catch (ParseException e) {
-            e.printStackTrace();
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
+        } 
+        finally {
             // 关闭连接,释放资源
             try {
                 httpclient.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            
         }
+        return result;
     }
 }
