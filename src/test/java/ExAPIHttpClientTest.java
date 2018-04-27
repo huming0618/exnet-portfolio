@@ -24,7 +24,7 @@ public class ExAPIHttpClientTest {
             //     }
             // });
 
-            JSONObject ordersHistoryResult = client.GetOrderHistory();
+            JSONObject ordersHistoryResult = client.GetOrderHistory("trx_usdt");
             JSONArray orderList = ordersHistoryResult.getJSONArray("orders");
             assertTrue(orderList.toList().size() > 0);
         }

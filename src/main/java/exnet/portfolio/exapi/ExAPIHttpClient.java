@@ -25,6 +25,7 @@ import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 
 //https://github.com/OKCoin/rest/blob/master/java/src/com/okcoin/rest/HttpUtilManager.java
+//https://spring.io/guides/gs/scheduling-tasks/
 public class ExAPIHttpClient{
     private final static String API_KEY_NAME = "api_key";
     private final static String SIGN_NAME = "sign";
@@ -35,8 +36,8 @@ public class ExAPIHttpClient{
 
     private final static String CONTENT_TYPE_VALUE = "application/x-www-form-urlencoded";
 
-    private final String apiKey = "aacc4dcc-92af-4f25-a14d-a56512f6f4a9";
-    private final String secretKey = "EE41AFD790FE117DCE7B8F51632A2FD7";
+    private final String apiKey = "apiKey";
+    private final String secretKey = "secretKey";
     private final String APIUrl = "https://www.okex.com";
 
     private final String accountAPIPath = "/api/v1/userinfo.do";
@@ -109,88 +110,23 @@ public class ExAPIHttpClient{
         return result;
     }
 
-    public JSONObject GetOrderHistory() throws Exception{
-        JSONObject result = null;
-
-        CloseableHttpClient httpclient = HttpClients.createDefault();
- 
-        HttpPost request = new HttpPost(this.APIUrl + orderHistoryAPIPath);
-        
-        request.setHeader(HTTP.CONTENT_TYPE, CONTENT_TYPE_VALUE);
-
-        System.out.println("executing request " + request.getURI());
-
+    public JSONObject GetOrderHistory(String symbolPair) throws Exception{
         List<NameValuePair> params=new ArrayList<NameValuePair>();
         params.add(new BasicNameValuePair(API_KEY_NAME, this.apiKey));
-        params.add(new BasicNameValuePair(SYMBOL_NAME, "trx_usdt"));
+        params.add(new BasicNameValuePair(SYMBOL_NAME, symbolPair));
         params.add(new BasicNameValuePair(STATUS_NAME, "1"));
         params.add(new BasicNameValuePair(CURRENT_PAGE_NAME, "0"));
         params.add(new BasicNameValuePair(PAGE_LENGTH_NAME, "200"));
         params.add(new BasicNameValuePair(SIGN_NAME, this.SignRequestData(params)));
 
-        //StringEntity params = new StringEntity("{'api_key': 'aacc4dcc-92af-4f25-a14d-a56512f6f4a9', 'sign': '7B16F821CD80772FB0BC061F50CEEE75'}");
-        request.setEntity(new UrlEncodedFormEntity(params, HTTP.UTF_8));
-  
-        CloseableHttpResponse response = httpclient.execute(request);
-            //System.out.println("============="+response.toString());
-        try {
-            HttpEntity entity = response.getEntity();
-            //System.out.println(response.getStatusLine());
-            //result = response.getStatusLine().toString();
-            if (entity != null) {
-                //System.out.println("Response content length: " + entity.getContentLength());
-                //System.out.println("Response content: " + EntityUtils.toString(entity));
-                result = new JSONObject(new JSONTokener(EntityUtils.toString(entity))); 
-            }
-        } finally {
-            response.close();
-        }
-
-        try {
-            httpclient.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return result;
+        return this.RequestHTTPAPI(this.orderHistoryAPIPath, params);
     }
 
     public JSONObject GetSpotAssets() throws Exception{
-        JSONObject result = null;
-
-        CloseableHttpClient httpclient = HttpClients.createDefault();
- 
-        HttpPost request = new HttpPost(this.APIUrl + accountAPIPath);
-        request.setHeader(HTTP.CONTENT_TYPE, CONTENT_TYPE_VALUE);
-
-        System.out.println("executing request " + request.getURI());
-
         List<NameValuePair> params=new ArrayList<NameValuePair>();
         params.add(new BasicNameValuePair(API_KEY_NAME, this.apiKey));
         params.add(new BasicNameValuePair(SIGN_NAME, this.SignRequestData(params)));
 
-        //StringEntity params = new StringEntity("{'api_key': 'aacc4dcc-92af-4f25-a14d-a56512f6f4a9', 'sign': '7B16F821CD80772FB0BC061F50CEEE75'}");
-        request.setEntity(new UrlEncodedFormEntity(params, HTTP.UTF_8));
-  
-        CloseableHttpResponse response = httpclient.execute(request);
-            //System.out.println("============="+response.toString());
-        try {
-            HttpEntity entity = response.getEntity();
-            //System.out.println(response.getStatusLine());
-            //result = response.getStatusLine().toString();
-            if (entity != null) {
-                //System.out.println("Response content length: " + entity.getContentLength());
-                //System.out.println("Response content: " + EntityUtils.toString(entity));
-                result = new JSONObject(new JSONTokener(EntityUtils.toString(entity))); 
-            }
-        } finally {
-            response.close();
-        }
-
-        try {
-            httpclient.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return result;
+        return this.RequestHTTPAPI(this.accountAPIPath, params);
     }
 }
