@@ -1,24 +1,46 @@
 package exnet.portfolio.exapi;
 
+import java.io.IOException;
 import java.security.MessageDigest;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 import org.json.JSONObject;
+import org.json.JSONTokener;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.HttpEntity;
 import org.apache.http.ParseException;
+import org.apache.http.HttpException;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.NameValuePair;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 
 //https://github.com/OKCoin/rest/blob/master/java/src/com/okcoin/rest/HttpUtilManager.java
 public class ExAPIHttpClient{
-    private final String apiKey = "apiKey";
-    private final String secretKey = "secretKey";
+    private final static String API_KEY_NAME = "api_key";
+    private final static String SIGN_NAME = "sign";
+    private final static String SYMBOL_NAME = "symbol";
+    private final static String STATUS_NAME = "status";
+    private final static String CURRENT_PAGE_NAME = "current_page";
+    private final static String PAGE_LENGTH_NAME = "page_length";
+
+    private final static String CONTENT_TYPE_VALUE = "application/x-www-form-urlencoded";
+
+    private final String apiKey = "aacc4dcc-92af-4f25-a14d-a56512f6f4a9";
+    private final String secretKey = "EE41AFD790FE117DCE7B8F51632A2FD7";
     private final String APIUrl = "https://www.okex.com";
+
     private final String accountAPIPath = "/api/v1/userinfo.do";
+    private final String orderHistoryAPIPath = "/api/v1/order_history.do";
 
     private static final char HEX_DIGITS[] = { '0', '1', '2', '3', '4', '5',
     '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
@@ -27,12 +49,18 @@ public class ExAPIHttpClient{
 
     }
 
-    private String SignRequestData(JSONObject data) throws Exception{
+    private String SignRequestData(List<NameValuePair> data) throws Exception{
         StringBuilder sign = new StringBuilder();
         
-        data.keySet().forEach(key-> sign.append(key + "=" + data.getString(key) + "&"));
+        data.sort((a,b)-> a.getName().compareTo(b.getName()));
+
+        data.forEach(item->{
+            sign.append(item.getName() + "=" + item.getValue() + "&");
+        });
+
         String combined = sign.toString() + "secret_key=" + this.secretKey;
 
+        //System.out.println("with sign " +  combined);
         MessageDigest md5 = MessageDigest.getInstance("MD5");
         md5.update(combined.getBytes());
 
@@ -42,58 +70,126 @@ public class ExAPIHttpClient{
             buffer.append(HEX_DIGITS[(bytes[i] & 0xf0) >> 4] + ""
                     + HEX_DIGITS[bytes[i] & 0xf]);
         }
-        System.out.println(buffer.toString());
+        //System.out.println(buffer.toString());
         return buffer.toString();
     }
 
-    public String GetSpotAssets(){
-        String result = "";
+    private JSONObject RequestHTTPAPI(String apiPath, List<NameValuePair> params) throws Exception{
+        JSONObject result = null;
+        CloseableHttpClient httpclient = HttpClients.createDefault();
+ 
+        HttpPost request = new HttpPost(this.APIUrl + apiPath);
+        request.setHeader(HTTP.CONTENT_TYPE, CONTENT_TYPE_VALUE);
+
+        System.out.println("executing request " + request.getURI());
+
+        //StringEntity params = new StringEntity("{'api_key': 'aacc4dcc-92af-4f25-a14d-a56512f6f4a9', 'sign': '7B16F821CD80772FB0BC061F50CEEE75'}");
+        request.setEntity(new UrlEncodedFormEntity(params, HTTP.UTF_8));
+  
+        CloseableHttpResponse response = httpclient.execute(request);
+            //System.out.println("============="+response.toString());
+        try {
+            HttpEntity entity = response.getEntity();
+            //System.out.println(response.getStatusLine());
+            //result = response.getStatusLine().toString();
+            if (entity != null) {
+                //System.out.println("Response content length: " + entity.getContentLength());
+                //System.out.println("Response content: " + EntityUtils.toString(entity));
+                result = new JSONObject(new JSONTokener(EntityUtils.toString(entity))); 
+            }
+        } finally {
+            response.close();
+        }
+
+        try {
+            httpclient.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public JSONObject GetOrderHistory() throws Exception{
+        JSONObject result = null;
 
         CloseableHttpClient httpclient = HttpClients.createDefault();
-        try {
-            HttpPost request = new HttpPost(this.APIUrl + accountAPIPath);
-            request.setHeader("Content-type", "application/x-www-form-urlencoded");
+ 
+        HttpPost request = new HttpPost(this.APIUrl + orderHistoryAPIPath);
+        
+        request.setHeader(HTTP.CONTENT_TYPE, CONTENT_TYPE_VALUE);
 
-            System.out.println("executing request " + request.getURI());
+        System.out.println("executing request " + request.getURI());
 
-            JSONObject requestData = new JSONObject();
-            requestData.put("api_key", this.apiKey);
-            requestData.put("sign", this.SignRequestData(requestData));
-            
-            StringEntity params = new StringEntity("{'api_key': 'aacc4dcc-92af-4f25-a14d-a56512f6f4a9', 'sign': '7B16F821CD80772FB0BC061F50CEEE75'}");
-            request.setEntity(params);
+        List<NameValuePair> params=new ArrayList<NameValuePair>();
+        params.add(new BasicNameValuePair(API_KEY_NAME, this.apiKey));
+        params.add(new BasicNameValuePair(SYMBOL_NAME, "trx_usdt"));
+        params.add(new BasicNameValuePair(STATUS_NAME, "1"));
+        params.add(new BasicNameValuePair(CURRENT_PAGE_NAME, "0"));
+        params.add(new BasicNameValuePair(PAGE_LENGTH_NAME, "200"));
+        params.add(new BasicNameValuePair(SIGN_NAME, this.SignRequestData(params)));
 
-            CloseableHttpResponse response = httpclient.execute(request);
-            
+        //StringEntity params = new StringEntity("{'api_key': 'aacc4dcc-92af-4f25-a14d-a56512f6f4a9', 'sign': '7B16F821CD80772FB0BC061F50CEEE75'}");
+        request.setEntity(new UrlEncodedFormEntity(params, HTTP.UTF_8));
+  
+        CloseableHttpResponse response = httpclient.execute(request);
             //System.out.println("============="+response.toString());
-            try {
-                HttpEntity entity = response.getEntity();
-                System.out.println("--------------------------------------");
-                // 打印响应状态
-                System.out.println(response.getStatusLine());
-                result = response.getStatusLine().toString();
-                if (entity != null) {
-                    // 打印响应内容长度
-                    //System.out.println("Response content length: " + entity.getContentLength());
-                    // 打印响应内容
-                    System.out.println("Response content: " + EntityUtils.toString(entity));
-                }
-                System.out.println("------------------------------------");
-            } finally {
-                response.close();
+        try {
+            HttpEntity entity = response.getEntity();
+            //System.out.println(response.getStatusLine());
+            //result = response.getStatusLine().toString();
+            if (entity != null) {
+                //System.out.println("Response content length: " + entity.getContentLength());
+                //System.out.println("Response content: " + EntityUtils.toString(entity));
+                result = new JSONObject(new JSONTokener(EntityUtils.toString(entity))); 
             }
-        } 
-        catch (Exception e) {
+        } finally {
+            response.close();
+        }
+
+        try {
+            httpclient.close();
+        } catch (Exception e) {
             e.printStackTrace();
-        } 
-        finally {
-            // 关闭连接,释放资源
-            try {
-                httpclient.close();
-            } catch (Exception e) {
-                e.printStackTrace();
+        }
+        return result;
+    }
+
+    public JSONObject GetSpotAssets() throws Exception{
+        JSONObject result = null;
+
+        CloseableHttpClient httpclient = HttpClients.createDefault();
+ 
+        HttpPost request = new HttpPost(this.APIUrl + accountAPIPath);
+        request.setHeader(HTTP.CONTENT_TYPE, CONTENT_TYPE_VALUE);
+
+        System.out.println("executing request " + request.getURI());
+
+        List<NameValuePair> params=new ArrayList<NameValuePair>();
+        params.add(new BasicNameValuePair(API_KEY_NAME, this.apiKey));
+        params.add(new BasicNameValuePair(SIGN_NAME, this.SignRequestData(params)));
+
+        //StringEntity params = new StringEntity("{'api_key': 'aacc4dcc-92af-4f25-a14d-a56512f6f4a9', 'sign': '7B16F821CD80772FB0BC061F50CEEE75'}");
+        request.setEntity(new UrlEncodedFormEntity(params, HTTP.UTF_8));
+  
+        CloseableHttpResponse response = httpclient.execute(request);
+            //System.out.println("============="+response.toString());
+        try {
+            HttpEntity entity = response.getEntity();
+            //System.out.println(response.getStatusLine());
+            //result = response.getStatusLine().toString();
+            if (entity != null) {
+                //System.out.println("Response content length: " + entity.getContentLength());
+                //System.out.println("Response content: " + EntityUtils.toString(entity));
+                result = new JSONObject(new JSONTokener(EntityUtils.toString(entity))); 
             }
-            
+        } finally {
+            response.close();
+        }
+
+        try {
+            httpclient.close();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return result;
     }

@@ -5,11 +5,33 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 import exnet.portfolio.exapi.*;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 public class ExAPIHttpClientTest {
     @Test 
     public void testGetAssets() {
         ExAPIHttpClient client = new ExAPIHttpClient();
-        String result = client.GetSpotAssets();
-        assertEquals(result, "1");
+        try {
+            
+            JSONObject assetResult = client.GetSpotAssets();
+            JSONObject free = (JSONObject)assetResult.query("/info/funds/free");
+            assertTrue(Float.parseFloat(free.getString("btc")) > 0);
+            // free.keySet().forEach(k->{
+            //     Float amt = Float.parseFloat(free.getString(k));
+            //     if (amt > 0){
+            //         System.out.print(k + "=>" + amt);
+            //     }
+            // });
+
+            JSONObject ordersHistoryResult = client.GetOrderHistory();
+            JSONArray orderList = ordersHistoryResult.getJSONArray("orders");
+            assertTrue(orderList.toList().size() > 0);
+        }
+        catch(Exception ex){
+            ex.printStackTrace();
+            assertNull(ex);
+        }
+        
     }
 }
