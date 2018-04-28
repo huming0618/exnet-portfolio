@@ -7,15 +7,22 @@ import java.util.ArrayList;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.stream.Collectors;
+
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
+import org.json.JSONTokener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Component
 public class Worker{
+    private final Logger LOG = LoggerFactory.getLogger("Record");
+
     private ExAPIHttpClient client;
 
     public Worker(){
@@ -23,18 +30,18 @@ public class Worker{
     }
 
     private Map<String,Float> GetAccountAsset(){
-        Map<String,Float> assetList = new HashMap<String,Float>();
+        Map<String,Float> assetList = null;
         try{
             JSONObject assetResult = this.client.GetSpotAssets();
             JSONObject free = (JSONObject)assetResult.query("/info/funds/free");
 
-            free.keySet().forEach(symbol->{
-                Float amt = Float.parseFloat(free.getString(symbol));
-                if (amt > 0){
-                    assetList.put(symbol, amt);
-                }
-            });
-            System.out.println(free.toString());
+            assetList = free.toMap()
+                .entrySet()
+                .stream()
+                .filter(x->!((String)x.getValue()).equals("0"))
+                .collect(Collectors.toMap(x -> x.getKey(), x -> Float.parseFloat((String)x.getValue())));
+            
+            //System.out.println(free.toString());
         }
         catch(Exception ex){
             ex.printStackTrace();
@@ -42,12 +49,12 @@ public class Worker{
         return assetList;
     }
 
-    @Scheduled(fixedRate = 120 * 1000)
+    @Scheduled(fixedRate = 15 * 60 * 1000)
     public void Record(){
-        
         try{
             Map<String,Float> asset = this.GetAccountAsset();
-
+            //System.out.println());
+            LOG.info((new JSONObject(asset)).toString());
             asset.keySet().forEach(symbol->{
                 String pair = String.format("%s_usdt", symbol);
                 try {
@@ -56,7 +63,8 @@ public class Worker{
                     if (ordersHistoryResult.has("orders")){
                         JSONArray orders = ordersHistoryResult.getJSONArray("orders");
                         if (orders.toList().size() > 0){
-                            System.out.println(orders.toString());
+                            LOG.info(orders.toString());
+                            //System.out.println(orders.toString());
                         }
                     }
                     Thread.sleep(800);

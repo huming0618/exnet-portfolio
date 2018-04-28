@@ -36,8 +36,8 @@ public class ExAPIHttpClient{
 
     private final static String CONTENT_TYPE_VALUE = "application/x-www-form-urlencoded";
 
-    private final String apiKey = "apiKey";
-    private final String secretKey = "secretKey";
+    private final String apiKey = "aa";
+    private final String secretKey = "dd";
     private final String APIUrl = "https://www.okex.com";
 
     private final String accountAPIPath = "/api/v1/userinfo.do";
